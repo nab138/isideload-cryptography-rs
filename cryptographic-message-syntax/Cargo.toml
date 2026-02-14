@@ -20,11 +20,7 @@ hex = "0.4.3"
 pem = "3.0.6"
 reqwest = { version = "0.13.2", default-features = false, features = ["blocking", "rustls"], optional = true }
 signature = { version = "2.2.0", features = ["std"] }
-
-[dependencies.x509-certificate]
-path = "../x509-certificate"
-version = "0.25.0"
-features = ["test"]
+x509-certificate = { version = "0.25.0", features = ["test"], package = "isideload-x509-certificate" }
 
 [features]
 default = ["http"]

@@ -550,10 +550,46 @@ dependencies = [
  "bytes",
  "chrono",
  "hex",
+ "isideload-x509-certificate 0.25.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "pem",
  "reqwest",
  "signature",
- "x509-certificate",
+]
+
+[[package]]
+name = "isideload-x509-certificate"
+version = "0.25.0"
+dependencies = [
+ "aws-lc-rs",
+ "bcder",
+ "bytes",
+ "chrono",
+ "der",
+ "hex",
+ "pem",
+ "signature",
+ "spki",
+ "thiserror 2.0.17",
+ "zeroize",
+]
+
+[[package]]
+name = "isideload-x509-certificate"
+version = "0.25.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1b8f6640892423dd86bac32808e94d586595b3e09a8e3b99ca101dc570d084bc"
+dependencies = [
+ "aws-lc-rs",
+ "bcder",
+ "bytes",
+ "chrono",
+ "der",
+ "hex",
+ "pem",
+ "signature",
+ "spki",
+ "thiserror 2.0.17",
+ "zeroize",
 ]
 
 [[package]]
@@ -1746,23 +1782,6 @@ name = "writeable"
 version = "0.6.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9edde0db4769d2dc68579893f2306b26c6ecfbe0ef499b013d731b7b9247e0b9"
-
-[[package]]
-name = "x509-certificate"
-version = "0.25.0"
-dependencies = [
- "aws-lc-rs",
- "bcder",
- "bytes",
- "chrono",
- "der",
- "hex",
- "pem",
- "signature",
- "spki",
- "thiserror 2.0.17",
- "zeroize",
-]
 
 [[package]]
 name = "yoke"
