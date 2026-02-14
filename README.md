@@ -1,5 +1,7 @@
 # cryptography-rs
 
+> This is a modified version of the [original cryptography-rs repository](https://github.com/indygreg/cryptography-rs) for use in [isideload](https://github.com/nab138/isideload).
+
 This repository defines Rust crates in the cryptography space. The
 crates in this repo were generally born out of a desire to support other
 projects from the author, such as implementing Rust code signing in pure

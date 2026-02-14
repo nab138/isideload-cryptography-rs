@@ -169,21 +169,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "773648b94d0e5d620f64f280777445740e61fe701025087ec8b57f45c791888b"
 
 [[package]]
-name = "cryptographic-message-syntax"
-version = "0.28.0"
-dependencies = [
- "aws-lc-rs",
- "bcder",
- "bytes",
- "chrono",
- "hex",
- "pem",
- "reqwest",
- "signature",
- "x509-certificate",
-]
-
-[[package]]
 name = "der"
 version = "0.7.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -554,6 +539,21 @@ checksum = "c91338f0783edbd6195decb37bae672fd3b165faffb89bf7b9e6942f8b1a731a"
 dependencies = [
  "memchr",
  "serde",
+]
+
+[[package]]
+name = "isideload-cryptographic-message-syntax"
+version = "0.28.0"
+dependencies = [
+ "aws-lc-rs",
+ "bcder",
+ "bytes",
+ "chrono",
+ "hex",
+ "pem",
+ "reqwest",
+ "signature",
+ "x509-certificate",
 ]
 
 [[package]]

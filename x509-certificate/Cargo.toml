@@ -1,14 +1,14 @@
 [package]
-name = "x509-certificate"
+name = "isideload-x509-certificate"
 version = "0.25.0"
-authors = ["Gregory Szorc <gregory.szorc@gmail.com>"]
+authors = ["Nicholas Sharp <nab@nabdev.me>"]
 edition = "2024"
 rust-version = "1.85"
 license = "MPL-2.0"
 description = "X.509 certificate parser and utility functionality"
 keywords = ["x509", "cryptography", "pki"]
-homepage = "https://github.com/indygreg/cryptography-rs"
-repository = "https://github.com/indygreg/cryptography-rs.git"
+homepage = "https://github.com/nab138/isideload-cryptography-rs"
+repository = "https://github.com/nab138/isideload-cryptography-rs.git"
 readme = "README.md"
 
 [features]
