@@ -10,6 +10,7 @@ use {
         X509CertificateError as Error, algorithm::DigestAlgorithm, asn1time::Time, rfc2986,
         rfc3280::Name, rfc5280, rfc5652, rfc5958::Attributes, rfc8017::RsaPublicKey, signing::Sign,
     },
+    aws_lc_rs::signature as ringsig,
     bcder::{
         ConstOid, Mode, Oid,
         decode::Constructed,
@@ -20,7 +21,6 @@ use {
     bytes::Bytes,
     chrono::{DateTime, Duration, Utc},
     der::{Decode, Document},
-    ring::signature as ringsig,
     signature::Signer,
     spki::EncodePublicKey,
     std::{
@@ -323,7 +323,7 @@ impl X509Certificate {
     pub fn fingerprint(
         &self,
         algorithm: DigestAlgorithm,
-    ) -> Result<ring::digest::Digest, std::io::Error> {
+    ) -> Result<aws_lc_rs::digest::Digest, std::io::Error> {
         let raw = self.encode_der()?;
 
         let mut h = algorithm.digester();
@@ -333,12 +333,12 @@ impl X509Certificate {
     }
 
     /// Obtain the SHA-1 fingerprint of this certificate.
-    pub fn sha1_fingerprint(&self) -> Result<ring::digest::Digest, std::io::Error> {
+    pub fn sha1_fingerprint(&self) -> Result<aws_lc_rs::digest::Digest, std::io::Error> {
         self.fingerprint(DigestAlgorithm::Sha1)
     }
 
     /// Obtain the SHA-256 fingerprint of this certificate.
-    pub fn sha256_fingerprint(&self) -> Result<ring::digest::Digest, std::io::Error> {
+    pub fn sha256_fingerprint(&self) -> Result<aws_lc_rs::digest::Digest, std::io::Error> {
         self.fingerprint(DigestAlgorithm::Sha256)
     }
 

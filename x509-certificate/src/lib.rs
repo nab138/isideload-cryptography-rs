@@ -156,8 +156,8 @@ impl From<der::Error> for X509CertificateError {
     }
 }
 
-impl From<ring::error::KeyRejected> for X509CertificateError {
-    fn from(e: ring::error::KeyRejected) -> Self {
+impl From<aws_lc_rs::error::KeyRejected> for X509CertificateError {
+    fn from(e: aws_lc_rs::error::KeyRejected) -> Self {
         Self::PrivateKeyRejected(e.to_string())
     }
 }

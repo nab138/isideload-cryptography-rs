@@ -82,7 +82,7 @@ mod time_stamp_protocol;
 pub use {
     signing::{SignedDataBuilder, SignerBuilder},
     time_stamp_protocol::{
-        time_stamp_message_http, time_stamp_request_http, TimeStampError, TimeStampResponse,
+        TimeStampError, TimeStampResponse, time_stamp_message_http, time_stamp_request_http,
     },
 };
 
@@ -92,21 +92,21 @@ use {
     crate::asn1::{
         rfc3161::OID_TIME_STAMP_TOKEN,
         rfc5652::{
-            CertificateChoices, SignerIdentifier, Time, OID_CONTENT_TYPE, OID_MESSAGE_DIGEST,
-            OID_SIGNING_TIME,
+            CertificateChoices, OID_CONTENT_TYPE, OID_MESSAGE_DIGEST, OID_SIGNING_TIME,
+            SignerIdentifier, Time,
         },
     },
+    aws_lc_rs::{digest::Digest, signature::UnparsedPublicKey},
     bcder::{Integer, OctetString},
     pem::PemError,
-    ring::{digest::Digest, signature::UnparsedPublicKey},
     std::{
         collections::HashSet,
         fmt::{Debug, Display, Formatter},
         ops::Deref,
     },
     x509_certificate::{
-        certificate::certificate_is_subset_of, rfc3280::Name, CapturedX509Certificate,
-        DigestAlgorithm, SignatureAlgorithm, X509Certificate, X509CertificateError,
+        CapturedX509Certificate, DigestAlgorithm, SignatureAlgorithm, X509Certificate,
+        X509CertificateError, certificate::certificate_is_subset_of, rfc3280::Name,
     },
 };
 
@@ -736,11 +736,12 @@ impl SignerInfo {
     /// there is and the token validates. `Err` occurs on any parse or verification
     /// error.
     pub fn verify_time_stamp_token(&self) -> Result<Option<()>, CmsError> {
-        let signed_data = match self.time_stamp_token_signed_data()? { Some(v) => {
-            v
-        } _ => {
-            return Ok(None);
-        }};
+        let signed_data = match self.time_stamp_token_signed_data()? {
+            Some(v) => v,
+            _ => {
+                return Ok(None);
+            }
+        };
 
         if signed_data.signers.is_empty() {
             return Ok(None);
@@ -1051,7 +1052,7 @@ pub struct UnsignedAttributes {
 mod tests {
     use {
         super::*,
-        bcder::{encode::Values, Mode},
+        bcder::{Mode, encode::Values},
     };
 
     // This signature was extracted from the Firefox.app/Contents/MacOS/firefox
@@ -1162,7 +1163,7 @@ mod tests {
             cert.verify_signed_data_with_algorithm(
                 IZZYSOFT_DATA,
                 signer.signature(),
-                &ring::signature::RSA_PKCS1_2048_8192_SHA1_FOR_LEGACY_USE_ONLY,
+                &aws_lc_rs::signature::RSA_PKCS1_2048_8192_SHA1_FOR_LEGACY_USE_ONLY,
             )
             .unwrap();
 

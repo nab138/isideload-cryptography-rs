@@ -6,12 +6,12 @@
 
 use {
     crate::{
+        X509CertificateError as Error,
         rfc3447::DigestInfo,
         rfc5280::{AlgorithmIdentifier, AlgorithmParameter},
-        X509CertificateError as Error,
     },
-    bcder::{encode::Values, ConstOid, OctetString, Oid},
-    ring::{digest, signature},
+    aws_lc_rs::{digest, signature},
+    bcder::{ConstOid, OctetString, Oid, encode::Values},
     spki::ObjectIdentifier,
     std::fmt::{Display, Formatter},
 };
@@ -97,7 +97,7 @@ pub(crate) const OID_EC_SECP256R1: ConstOid = Oid(&[42, 134, 72, 206, 61, 3, 1, 
 pub(crate) const OID_EC_SECP384R1: ConstOid = Oid(&[43, 129, 4, 0, 34]);
 
 /// No signature identifier
-/// 
+///
 /// 1.3.6.1.5.5.7.6.2
 pub(crate) const OID_NO_SIGNATURE_ALGORITHM: ConstOid = Oid(&[43, 6, 1, 5, 5, 7, 6, 2]);
 
@@ -336,9 +336,9 @@ pub enum SignatureAlgorithm {
     Ed25519,
 
     /// No signature with digest algorithm
-    /// 
+    ///
     /// Corresponds to OID 1.3.6.1.5.5.7.6.2
-    NoSignature(DigestAlgorithm)
+    NoSignature(DigestAlgorithm),
 }
 
 impl SignatureAlgorithm {
@@ -358,42 +358,44 @@ impl SignatureAlgorithm {
         oid: &Oid,
         digest_algorithm: DigestAlgorithm,
     ) -> Result<Self, Error> {
-        match Self::try_from(oid) { Ok(alg) => {
-            Ok(alg)
-        } _ => { match KeyAlgorithm::try_from(oid) { Ok(key_alg) => {
-            match key_alg {
-                KeyAlgorithm::Rsa => match digest_algorithm {
-                    DigestAlgorithm::Sha1 => Ok(Self::RsaSha1),
-                    DigestAlgorithm::Sha256 => Ok(Self::RsaSha256),
-                    DigestAlgorithm::Sha384 => Ok(Self::RsaSha384),
-                    DigestAlgorithm::Sha512 => Ok(Self::RsaSha512),
+        match Self::try_from(oid) {
+            Ok(alg) => Ok(alg),
+            _ => match KeyAlgorithm::try_from(oid) {
+                Ok(key_alg) => match key_alg {
+                    KeyAlgorithm::Rsa => match digest_algorithm {
+                        DigestAlgorithm::Sha1 => Ok(Self::RsaSha1),
+                        DigestAlgorithm::Sha256 => Ok(Self::RsaSha256),
+                        DigestAlgorithm::Sha384 => Ok(Self::RsaSha384),
+                        DigestAlgorithm::Sha512 => Ok(Self::RsaSha512),
+                    },
+                    KeyAlgorithm::Ed25519 => Ok(Self::Ed25519),
+                    KeyAlgorithm::Ecdsa(_) => match digest_algorithm {
+                        DigestAlgorithm::Sha256 => Ok(Self::EcdsaSha256),
+                        DigestAlgorithm::Sha384 => Ok(Self::EcdsaSha384),
+                        DigestAlgorithm::Sha1 | DigestAlgorithm::Sha512 => {
+                            Err(Error::UnknownSignatureAlgorithm(format!(
+                                "cannot use digest {:?} with ECDSA",
+                                digest_algorithm
+                            )))
+                        }
+                    },
                 },
-                KeyAlgorithm::Ed25519 => Ok(Self::Ed25519),
-                KeyAlgorithm::Ecdsa(_) => match digest_algorithm {
-                    DigestAlgorithm::Sha256 => Ok(Self::EcdsaSha256),
-                    DigestAlgorithm::Sha384 => Ok(Self::EcdsaSha384),
-                    DigestAlgorithm::Sha1 | DigestAlgorithm::Sha512 => {
+                _ => {
+                    if oid == &OID_NO_SIGNATURE_ALGORITHM {
+                        Ok(Self::NoSignature(digest_algorithm))
+                    } else {
                         Err(Error::UnknownSignatureAlgorithm(format!(
-                            "cannot use digest {:?} with ECDSA",
-                            digest_algorithm
+                            "do not know how to resolve {} to a signature algorithm",
+                            oid
                         )))
                     }
-                },
-            }
-        } _ => if oid == &OID_NO_SIGNATURE_ALGORITHM {
-            Ok(Self::NoSignature(digest_algorithm))
-        } else {
-            Err(Error::UnknownSignatureAlgorithm(format!(
-                "do not know how to resolve {} to a signature algorithm",
-                oid
-            )))
-        }}}}
+                }
+            },
+        }
     }
 
     /// Creates an instance with the noSignature mechanism and [DigestAlgorithm]
-    pub fn from_digest_algorithm(
-        digest_algorithm: DigestAlgorithm,
-    ) -> Self {
+    pub fn from_digest_algorithm(digest_algorithm: DigestAlgorithm) -> Self {
         Self::NoSignature(digest_algorithm)
     }
 
@@ -458,7 +460,9 @@ impl Display for SignatureAlgorithm {
             SignatureAlgorithm::EcdsaSha256 => f.write_str("ECDSA with SHA-256"),
             SignatureAlgorithm::EcdsaSha384 => f.write_str("ECDSA with SHA-384"),
             SignatureAlgorithm::Ed25519 => f.write_str("ED25519"),
-            SignatureAlgorithm::NoSignature(digest_algorithm) => f.write_fmt(format_args!("No signature with {}", digest_algorithm)),
+            SignatureAlgorithm::NoSignature(digest_algorithm) => {
+                f.write_fmt(format_args!("No signature with {}", digest_algorithm))
+            }
         }
     }
 }

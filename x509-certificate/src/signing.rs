@@ -7,13 +7,13 @@ use {
         EcdsaCurve, KeyAlgorithm, SignatureAlgorithm, X509CertificateError as Error,
         rfc3447::RsaPrivateKey, rfc5958::OneAsymmetricKey,
     },
-    bcder::decode::Constructed,
-    bytes::Bytes,
-    der::SecretDocument,
-    ring::{
+    aws_lc_rs::{
         rand::SystemRandom,
         signature::{self as ringsig, KeyPair},
     },
+    bcder::decode::Constructed,
+    bytes::Bytes,
+    der::SecretDocument,
     signature::{SignatureEncoding as SignatureTrait, Signer},
     zeroize::Zeroizing,
 };
@@ -141,12 +141,12 @@ impl Signer<Signature> for InMemorySigningKeyPair {
     fn try_sign(&self, msg: &[u8]) -> Result<Signature, signature::Error> {
         match self {
             Self::Rsa(kp) => {
-                let mut signature = vec![0; kp.ring_pair.public().modulus_len()];
+                let mut signature = vec![0; kp.ring_pair.public_key().modulus_len()];
 
                 kp.ring_pair
                     .sign(
                         &ringsig::RSA_PKCS1_SHA256,
-                        &ring::rand::SystemRandom::new(),
+                        &aws_lc_rs::rand::SystemRandom::new(),
                         msg,
                         &mut signature,
                     )
@@ -157,7 +157,7 @@ impl Signer<Signature> for InMemorySigningKeyPair {
             Self::Ecdsa(kp) => {
                 let signature = kp
                     .ring_pair
-                    .sign(&ring::rand::SystemRandom::new(), msg)
+                    .sign(&aws_lc_rs::rand::SystemRandom::new(), msg)
                     .map_err(|_| signature::Error::new())?;
 
                 Ok(Signature::from(signature.as_ref().to_vec()))
@@ -270,11 +270,7 @@ impl InMemorySigningKeyPair {
                 })))
             }
             KeyAlgorithm::Ecdsa(curve) => {
-                let pair = ringsig::EcdsaKeyPair::from_pkcs8(
-                    curve.into(),
-                    data.as_ref(),
-                    &SystemRandom::new(),
-                )?;
+                let pair = ringsig::EcdsaKeyPair::from_pkcs8(curve.into(), data.as_ref())?;
 
                 Ok(Self::Ecdsa(Box::new(EcdsaKeyPair {
                     pkcs8_der,
@@ -377,7 +373,7 @@ mod test {
 
     #[test]
     fn signing_key_from_ecdsa_pkcs8() {
-        let rng = ring::rand::SystemRandom::new();
+        let rng = aws_lc_rs::rand::SystemRandom::new();
 
         for alg in &[
             &ringsig::ECDSA_P256_SHA256_ASN1_SIGNING,
@@ -425,7 +421,7 @@ mod test {
 
     #[test]
     fn signing_key_from_ed25519_pkcs8() {
-        let rng = ring::rand::SystemRandom::new();
+        let rng = aws_lc_rs::rand::SystemRandom::new();
 
         let doc = ringsig::Ed25519KeyPair::generate_pkcs8(&rng).unwrap();
 

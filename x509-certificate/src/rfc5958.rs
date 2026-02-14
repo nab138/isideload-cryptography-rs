@@ -7,9 +7,9 @@
 use {
     crate::{rfc5280::AlgorithmIdentifier, rfc5652::Attribute, rfc5915::EcPrivateKey},
     bcder::{
+        BitString, Integer, Mode, OctetString, Tag,
         decode::{Constructed, DecodeError, IntoSource, Source},
         encode::{self, PrimitiveContent, Values},
-        BitString, Integer, Mode, OctetString, Tag,
     },
     std::ops::{Deref, DerefMut},
 };
@@ -176,18 +176,17 @@ mod test {
 
     #[test]
     fn parse_generated_cert() {
-        let rng = ring::rand::SystemRandom::new();
+        let rng = aws_lc_rs::rand::SystemRandom::new();
 
-        let doc = ring::signature::EcdsaKeyPair::generate_pkcs8(
-            &ring::signature::ECDSA_P256_SHA256_ASN1_SIGNING,
+        let doc = aws_lc_rs::signature::EcdsaKeyPair::generate_pkcs8(
+            &aws_lc_rs::signature::ECDSA_P256_SHA256_ASN1_SIGNING,
             &rng,
         )
         .unwrap();
 
-        ring::signature::EcdsaKeyPair::from_pkcs8(
-            &ring::signature::ECDSA_P256_SHA256_ASN1_SIGNING,
+        aws_lc_rs::signature::EcdsaKeyPair::from_pkcs8(
+            &aws_lc_rs::signature::ECDSA_P256_SHA256_ASN1_SIGNING,
             doc.as_ref(),
-            &ring::rand::SystemRandom::new(),
         )
         .unwrap();
 

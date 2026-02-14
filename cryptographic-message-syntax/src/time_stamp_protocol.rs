@@ -7,18 +7,18 @@
 use {
     crate::asn1::{
         rfc3161::{
-            MessageImprint, PkiStatus, TimeStampReq, TimeStampResp, TstInfo,
-            OID_CONTENT_TYPE_TST_INFO,
+            MessageImprint, OID_CONTENT_TYPE_TST_INFO, PkiStatus, TimeStampReq, TimeStampResp,
+            TstInfo,
         },
-        rfc5652::{SignedData, OID_ID_SIGNED_DATA},
+        rfc5652::{OID_ID_SIGNED_DATA, SignedData},
     },
+    aws_lc_rs::rand::SecureRandom,
     bcder::{
+        Integer, OctetString,
         decode::{Constructed, DecodeError, IntoSource, Source},
         encode::Values,
-        Integer, OctetString,
     },
     reqwest::IntoUrl,
-    ring::rand::SecureRandom,
     std::{convert::Infallible, ops::Deref},
     x509_certificate::DigestAlgorithm,
 };
@@ -126,23 +126,24 @@ impl TimeStampResponse {
     }
 
     pub fn tst_info(&self) -> Result<Option<TstInfo>, DecodeError<Infallible>> {
-        match self.signed_data()? { Some(signed_data) => {
-            if signed_data.content_info.content_type == OID_CONTENT_TYPE_TST_INFO {
-                if let Some(content) = signed_data.content_info.content {
-                    Ok(Some(Constructed::decode(
-                        content.to_bytes(),
-                        bcder::Mode::Der,
-                        TstInfo::take_from,
-                    )?))
+        match self.signed_data()? {
+            Some(signed_data) => {
+                if signed_data.content_info.content_type == OID_CONTENT_TYPE_TST_INFO {
+                    if let Some(content) = signed_data.content_info.content {
+                        Ok(Some(Constructed::decode(
+                            content.to_bytes(),
+                            bcder::Mode::Der,
+                            TstInfo::take_from,
+                        )?))
+                    } else {
+                        Ok(None)
+                    }
                 } else {
                     Ok(None)
                 }
-            } else {
-                Ok(None)
             }
-        } _ => {
-            Ok(None)
-        }}
+            _ => Ok(None),
+        }
     }
 }
 
@@ -213,7 +214,7 @@ pub fn time_stamp_message_http(
     let digest = h.finish();
 
     let mut random = [0u8; 8];
-    ring::rand::SystemRandom::new()
+    aws_lc_rs::rand::SystemRandom::new()
         .fill(&mut random)
         .map_err(|_| TimeStampError::Random)?;
 
