@@ -1,6 +1,6 @@
 [package]
 name = "isideload-cryptographic-message-syntax"
-version = "0.28.0"
+version = "0.29.0"
 authors = ["Nicholas Sharp <nab@nabdev.me>"]
 edition = "2024"
 rust-version = "1.85"
@@ -18,10 +18,9 @@ bytes = "1.11.0"
 chrono = { version = "0.4.42", default-features = false }
 hex = "0.4.3"
 pem = "3.0.6"
-reqwest = { version = "0.13.2", default-features = false, features = ["blocking", "rustls"], optional = true }
 signature = { version = "2.2.0", features = ["std"] }
 x509-certificate = { version = "0.25.0", features = ["test"], package = "isideload-x509-certificate" }
 
 [features]
 default = ["http"]
-http = ["dep:reqwest"]
+http = []

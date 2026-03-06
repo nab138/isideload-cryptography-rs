@@ -75,16 +75,9 @@ pub mod asn1;
 
 #[cfg(feature = "http")]
 mod signing;
-#[cfg(feature = "http")]
-mod time_stamp_protocol;
 
 #[cfg(feature = "http")]
-pub use {
-    signing::{SignedDataBuilder, SignerBuilder},
-    time_stamp_protocol::{
-        TimeStampError, TimeStampResponse, time_stamp_message_http, time_stamp_request_http,
-    },
-};
+pub use signing::{SignedDataBuilder, SignerBuilder};
 
 pub use {bcder::Oid, bytes::Bytes};
 
@@ -175,10 +168,6 @@ pub enum CmsError {
     /// Error occurred parsing a distinguished name field in a certificate.
     DistinguishedNameParseError,
 
-    #[cfg(feature = "http")]
-    /// Error occurred in Time-Stamp Protocol.
-    TimeStampProtocol(TimeStampError),
-
     /// Error occurred in the x509-certificate crate.
     X509Certificate(X509CertificateError),
 }
@@ -233,10 +222,6 @@ impl Display for CmsError {
             Self::DistinguishedNameParseError => {
                 f.write_str("could not parse distinguished name data")
             }
-            #[cfg(feature = "http")]
-            Self::TimeStampProtocol(e) => {
-                f.write_fmt(format_args!("Time-Stamp Protocol error: {}", e))
-            }
             Self::X509Certificate(e) => {
                 f.write_fmt(format_args!("X.509 certificate error: {:?}", e))
             }
@@ -259,13 +244,6 @@ impl From<std::io::Error> for CmsError {
 impl From<PemError> for CmsError {
     fn from(e: PemError) -> Self {
         Self::Pem(e)
-    }
-}
-
-#[cfg(feature = "http")]
-impl From<TimeStampError> for CmsError {
-    fn from(e: TimeStampError) -> Self {
-        Self::TimeStampProtocol(e)
     }
 }
 
@@ -703,56 +681,6 @@ impl SignerInfo {
         );
 
         Ok(public_key)
-    }
-
-    /// Resolve the time-stamp token [SignedData] for this signer.
-    ///
-    /// The time-stamp token is a SignedData ASN.1 structure embedded as an unsigned
-    /// attribute. This is a convenience method to extract it and turn it into
-    /// a [SignedData].
-    ///
-    /// Returns `Ok(Some)` on success, `Ok(None)` if there is no time-stamp token,
-    /// and `Err` if there is a parsing error.
-    pub fn time_stamp_token_signed_data(&self) -> Result<Option<SignedData>, CmsError> {
-        if let Some(attrs) = self.unsigned_attributes() {
-            if let Some(signed_data) = &attrs.time_stamp_token {
-                Ok(Some(SignedData::try_from(signed_data)?))
-            } else {
-                Ok(None)
-            }
-        } else {
-            Ok(None)
-        }
-    }
-
-    /// Verify the time-stamp token in this instance.
-    ///
-    /// The time-stamp token is a SignedData ASN.1 structure embedded as an unsigned
-    /// attribute. So this method reconstructs that data structure and effectively
-    /// calls [SignerInfo::verify_signature_with_signed_data] and
-    /// [SignerInfo::verify_message_digest_with_signed_data].
-    ///
-    /// Returns `Ok(None)` if there is no time-stamp token and `Ok(Some(()))` if
-    /// there is and the token validates. `Err` occurs on any parse or verification
-    /// error.
-    pub fn verify_time_stamp_token(&self) -> Result<Option<()>, CmsError> {
-        let signed_data = match self.time_stamp_token_signed_data()? {
-            Some(v) => v,
-            _ => {
-                return Ok(None);
-            }
-        };
-
-        if signed_data.signers.is_empty() {
-            return Ok(None);
-        }
-
-        for signer in signed_data.signers() {
-            signer.verify_signature_with_signed_data(&signed_data)?;
-            signer.verify_message_digest_with_signed_data(&signed_data)?;
-        }
-
-        Ok(Some(()))
     }
 
     /// Obtain the raw bytes of content that was signed given a `SignedData`.
