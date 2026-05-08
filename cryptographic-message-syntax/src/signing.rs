@@ -6,30 +6,25 @@
 
 use {
     crate::{
-        asn1::{
-            rfc3161::OID_TIME_STAMP_TOKEN,
-            rfc5652::{
-                CertificateChoices, CertificateSet, CmsVersion, DigestAlgorithmIdentifier,
-                DigestAlgorithmIdentifiers, EncapsulatedContentInfo, IssuerAndSerialNumber,
-                SignatureValue, SignedAttributes, SignedData, SignerIdentifier, SignerInfo,
-                SignerInfos, UnsignedAttributes, OID_CONTENT_TYPE, OID_ID_DATA, OID_ID_SIGNED_DATA,
-                OID_MESSAGE_DIGEST, OID_SIGNING_TIME,
-            },
-        },
-        time_stamp_protocol::{time_stamp_message_http, TimeStampError},
         CmsError,
+        asn1::rfc5652::{
+            CertificateChoices, CertificateSet, CmsVersion, DigestAlgorithmIdentifier,
+            DigestAlgorithmIdentifiers, EncapsulatedContentInfo, IssuerAndSerialNumber,
+            OID_CONTENT_TYPE, OID_ID_DATA, OID_ID_SIGNED_DATA, OID_MESSAGE_DIGEST,
+            OID_SIGNING_TIME, SignatureValue, SignedAttributes, SignedData, SignerIdentifier,
+            SignerInfo, SignerInfos,
+        },
     },
     bcder::{
-        encode::{PrimitiveContent, Values},
         Captured, Mode, OctetString, Oid,
+        encode::{PrimitiveContent, Values},
     },
     bytes::Bytes,
-    reqwest::IntoUrl,
     std::collections::HashSet,
     x509_certificate::{
+        CapturedX509Certificate, DigestAlgorithm, KeyInfoSigner, SignatureAlgorithm,
         asn1time::UtcTime,
         rfc5652::{Attribute, AttributeValue},
-        CapturedX509Certificate, DigestAlgorithm, KeyInfoSigner, SignatureAlgorithm,
     },
 };
 
@@ -64,9 +59,6 @@ pub struct SignerBuilder<'a> {
 
     /// Extra attributes to include in the SignedAttributes set.
     extra_signed_attributes: Vec<Attribute>,
-
-    /// Time-Stamp Protocol (TSP) server HTTP URL to use.
-    time_stamp_url: Option<reqwest::Url>,
 }
 
 impl<'a> SignerBuilder<'a> {
@@ -88,7 +80,6 @@ impl<'a> SignerBuilder<'a> {
             message_id_content: None,
             content_type: Oid(Bytes::copy_from_slice(OID_ID_DATA.as_ref())),
             extra_signed_attributes: Vec::new(),
-            time_stamp_url: None,
         }
     }
 
@@ -108,7 +99,6 @@ impl<'a> SignerBuilder<'a> {
             message_id_content: None,
             content_type: Oid(Bytes::copy_from_slice(OID_ID_DATA.as_ref())),
             extra_signed_attributes: Vec::new(),
-            time_stamp_url: None,
         }
     }
 
@@ -156,17 +146,6 @@ impl<'a> SignerBuilder<'a> {
                 data.encode_ref(),
             ))],
         )
-    }
-
-    /// Obtain a time-stamp token from a server.
-    ///
-    /// If this is called, the URL must be a server implementing the Time-Stamp Protocol
-    /// (TSP) as defined by RFC 3161. At signature generation time, the server will be
-    /// contacted and the time stamp token response will be added as an unsigned attribute
-    /// on the [SignedData] instance.
-    pub fn time_stamp_url(mut self, url: impl IntoUrl) -> Result<Self, reqwest::Error> {
-        self.time_stamp_url = Some(url.into_url()?);
-        Ok(self)
     }
 }
 
@@ -398,34 +377,6 @@ impl<'a> SignedDataBuilder<'a> {
             signer_info.signature = SignatureValue::new(Bytes::from(signature.clone()));
             signer_info.signature_algorithm = signature_algorithm.into();
 
-            if let Some(url) = &signer.time_stamp_url {
-                // The message sent to the TSA (via a digest) is the signature of the signed data.
-                let res = time_stamp_message_http(
-                    url.clone(),
-                    signature.as_ref(),
-                    signer.digest_algorithm,
-                )?;
-
-                if !res.is_success() {
-                    return Err(TimeStampError::Unsuccessful(res.clone()).into());
-                }
-
-                let signed_data = res
-                    .signed_data()?
-                    .ok_or(CmsError::TimeStampProtocol(TimeStampError::BadResponse))?;
-
-                let mut unsigned_attributes = UnsignedAttributes::default();
-                unsigned_attributes.push(Attribute {
-                    typ: Oid(Bytes::copy_from_slice(OID_TIME_STAMP_TOKEN.as_ref())),
-                    values: vec![AttributeValue::new(Captured::from_values(
-                        Mode::Der,
-                        signed_data.encode_ref(),
-                    ))],
-                });
-
-                signer_info.unsigned_attributes = Some(unsigned_attributes);
-            }
-
             signer_infos.push(signer_info);
         }
 
@@ -490,146 +441,5 @@ impl<'a> SignedDataBuilder<'a> {
             .write_encoded(Mode::Der, &mut ber)?;
 
         Ok(ber)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use {
-        super::*,
-        crate::SignedData,
-        x509_certificate::{testutil::*, EcdsaCurve},
-    };
-
-    const DIGICERT_TIMESTAMP_URL: &str = "http://timestamp.digicert.com";
-
-    #[test]
-    fn simple_rsa_signature_inline() {
-        let key = rsa_private_key();
-        let cert = rsa_cert();
-
-        let signer = SignerBuilder::new(&key, cert);
-
-        let ber = SignedDataBuilder::default()
-            .content_inline(vec![42])
-            .signer(signer)
-            .build_der()
-            .unwrap();
-
-        let signed_data = crate::SignedData::parse_ber(&ber).unwrap();
-        assert_eq!(signed_data.signed_content(), Some(vec![42].as_ref()));
-
-        for signer in signed_data.signers() {
-            signer
-                .verify_message_digest_with_signed_data(&signed_data)
-                .unwrap();
-            signer
-                .verify_signature_with_signed_data(&signed_data)
-                .unwrap();
-            assert!(signer.unsigned_attributes.is_none());
-        }
-    }
-
-    #[test]
-    fn simple_rsa_signature_external() {
-        let key = rsa_private_key();
-        let cert = rsa_cert();
-
-        let signer = SignerBuilder::new(&key, cert);
-
-        let ber = SignedDataBuilder::default()
-            .content_external(vec![42])
-            .signer(signer)
-            .build_der()
-            .unwrap();
-
-        let signed_data = crate::SignedData::parse_ber(&ber).unwrap();
-        assert!(signed_data.signed_content().is_none());
-
-        for signer in signed_data.signers() {
-            signer.verify_message_digest_with_content(&[42]).unwrap();
-            signer
-                .verify_signature_with_signed_data(&signed_data)
-                .unwrap();
-            assert!(signer.unsigned_attributes.is_none());
-        }
-    }
-
-    #[test]
-    fn time_stamp_url() {
-        let key = rsa_private_key();
-        let cert = rsa_cert();
-
-        let signer = SignerBuilder::new(&key, cert)
-            .time_stamp_url(DIGICERT_TIMESTAMP_URL)
-            .unwrap();
-
-        let ber = SignedDataBuilder::default()
-            .content_inline(vec![42])
-            .signer(signer)
-            .build_der()
-            .unwrap();
-
-        let signed_data = crate::SignedData::parse_ber(&ber).unwrap();
-
-        for signer in signed_data.signers() {
-            let unsigned = signer.unsigned_attributes().unwrap();
-            let tst = unsigned.time_stamp_token.as_ref().unwrap();
-            assert!(tst.certificates.is_some());
-
-            let tst_signed_data = signer.time_stamp_token_signed_data().unwrap().unwrap();
-            for signer in tst_signed_data.signers() {
-                signer
-                    .verify_message_digest_with_signed_data(&tst_signed_data)
-                    .unwrap();
-                signer
-                    .verify_signature_with_signed_data(&tst_signed_data)
-                    .unwrap();
-            }
-
-            assert!(signer.verify_time_stamp_token().unwrap().is_some());
-        }
-    }
-
-    #[test]
-    fn simple_ecdsa_signature() {
-        for curve in EcdsaCurve::all() {
-            let (cert, key) = self_signed_ecdsa_key_pair(Some(*curve));
-
-            let cms = SignedDataBuilder::default()
-                .content_inline("hello world".as_bytes().to_vec())
-                .certificate(cert.clone())
-                .signer(SignerBuilder::new(&key, cert))
-                .build_der()
-                .unwrap();
-
-            let signed_data = SignedData::parse_ber(&cms).unwrap();
-
-            for signer in signed_data.signers() {
-                signer
-                    .verify_signature_with_signed_data(&signed_data)
-                    .unwrap();
-            }
-        }
-    }
-
-    #[test]
-    fn simple_ed25519_signature() {
-        let (cert, key) = self_signed_ed25519_key_pair();
-
-        let cms = SignedDataBuilder::default()
-            .content_inline("hello world".as_bytes().to_vec())
-            .certificate(cert.clone())
-            .signer(SignerBuilder::new(&key, cert))
-            .build_der()
-            .unwrap();
-
-        let signed_data = SignedData::parse_ber(&cms).unwrap();
-
-        for signer in signed_data.signers() {
-            signer
-                .verify_signature_with_signed_data(&signed_data)
-                .unwrap();
-        }
     }
 }

@@ -75,16 +75,9 @@ pub mod asn1;
 
 #[cfg(feature = "http")]
 mod signing;
-#[cfg(feature = "http")]
-mod time_stamp_protocol;
 
 #[cfg(feature = "http")]
-pub use {
-    signing::{SignedDataBuilder, SignerBuilder},
-    time_stamp_protocol::{
-        time_stamp_message_http, time_stamp_request_http, TimeStampError, TimeStampResponse,
-    },
-};
+pub use signing::{SignedDataBuilder, SignerBuilder};
 
 pub use {bcder::Oid, bytes::Bytes};
 
@@ -92,8 +85,8 @@ use {
     crate::asn1::{
         rfc3161::OID_TIME_STAMP_TOKEN,
         rfc5652::{
-            CertificateChoices, SignerIdentifier, Time, OID_CONTENT_TYPE, OID_MESSAGE_DIGEST,
-            OID_SIGNING_TIME,
+            CertificateChoices, OID_CONTENT_TYPE, OID_MESSAGE_DIGEST, OID_SIGNING_TIME,
+            SignerIdentifier, Time,
         },
     },
     bcder::{Integer, OctetString},
@@ -105,8 +98,8 @@ use {
         ops::Deref,
     },
     x509_certificate::{
-        certificate::certificate_is_subset_of, rfc3280::Name, CapturedX509Certificate,
-        DigestAlgorithm, SignatureAlgorithm, X509Certificate, X509CertificateError,
+        CapturedX509Certificate, DigestAlgorithm, SignatureAlgorithm, X509Certificate,
+        X509CertificateError, certificate::certificate_is_subset_of, rfc3280::Name,
     },
 };
 
@@ -175,10 +168,6 @@ pub enum CmsError {
     /// Error occurred parsing a distinguished name field in a certificate.
     DistinguishedNameParseError,
 
-    #[cfg(feature = "http")]
-    /// Error occurred in Time-Stamp Protocol.
-    TimeStampProtocol(TimeStampError),
-
     /// Error occurred in the x509-certificate crate.
     X509Certificate(X509CertificateError),
 }
@@ -233,10 +222,6 @@ impl Display for CmsError {
             Self::DistinguishedNameParseError => {
                 f.write_str("could not parse distinguished name data")
             }
-            #[cfg(feature = "http")]
-            Self::TimeStampProtocol(e) => {
-                f.write_fmt(format_args!("Time-Stamp Protocol error: {}", e))
-            }
             Self::X509Certificate(e) => {
                 f.write_fmt(format_args!("X.509 certificate error: {:?}", e))
             }
@@ -259,13 +244,6 @@ impl From<std::io::Error> for CmsError {
 impl From<PemError> for CmsError {
     fn from(e: PemError) -> Self {
         Self::Pem(e)
-    }
-}
-
-#[cfg(feature = "http")]
-impl From<TimeStampError> for CmsError {
-    fn from(e: TimeStampError) -> Self {
-        Self::TimeStampProtocol(e)
     }
 }
 
@@ -736,11 +714,12 @@ impl SignerInfo {
     /// there is and the token validates. `Err` occurs on any parse or verification
     /// error.
     pub fn verify_time_stamp_token(&self) -> Result<Option<()>, CmsError> {
-        let signed_data = match self.time_stamp_token_signed_data()? { Some(v) => {
-            v
-        } _ => {
-            return Ok(None);
-        }};
+        let signed_data = match self.time_stamp_token_signed_data()? {
+            Some(v) => v,
+            _ => {
+                return Ok(None);
+            }
+        };
 
         if signed_data.signers.is_empty() {
             return Ok(None);
@@ -1051,7 +1030,7 @@ pub struct UnsignedAttributes {
 mod tests {
     use {
         super::*,
-        bcder::{encode::Values, Mode},
+        bcder::{Mode, encode::Values},
     };
 
     // This signature was extracted from the Firefox.app/Contents/MacOS/firefox

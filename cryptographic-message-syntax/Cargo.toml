@@ -1,6 +1,6 @@
 [package]
 name = "isideload-cryptographic-message-syntax"
-version = "0.30.0"
+version = "0.31.0"
 authors = ["Nicholas Sharp <nab@nabdev.me>"]
 edition = "2024"
 rust-version = "1.85"
@@ -17,7 +17,6 @@ bytes = "1.11.1"
 chrono = { version = "0.4.44", default-features = false }
 hex = "0.4.3"
 pem = "3.0.6"
-reqwest = { version = "0.13.2", default-features = false, features = ["blocking", "rustls"], optional = true }
 ring = "0.17.14"
 signature = { version = "2.2.0", features = ["std"] }
 x509-certificate = { package="isideload-x509-certificate", path = "../x509-certificate", version = "0.26.0" }
@@ -32,6 +31,6 @@ getrandom_04 = { package = "getrandom", version = "0.4", default-features = fals
 ] }
 
 [features]
-default = []
-http = ["dep:reqwest"]
+default = ["http"]
+http = []
 wasm = ["ring/wasm32_unknown_unknown_js"]
