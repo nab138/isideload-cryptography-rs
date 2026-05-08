@@ -603,11 +603,30 @@ dependencies = [
  "getrandom 0.2.17",
  "getrandom 0.4.2",
  "hex",
+ "isideload-x509-certificate",
  "pem",
  "reqwest",
  "ring",
  "signature",
- "x509-certificate",
+]
+
+[[package]]
+name = "isideload-x509-certificate"
+version = "0.26.0"
+dependencies = [
+ "bcder",
+ "bytes",
+ "chrono",
+ "der",
+ "getrandom 0.2.17",
+ "getrandom 0.4.2",
+ "hex",
+ "pem",
+ "ring",
+ "signature",
+ "spki",
+ "thiserror",
+ "zeroize",
 ]
 
 [[package]]
@@ -1930,25 +1949,6 @@ name = "writeable"
 version = "0.6.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1ffae5123b2d3fc086436f8834ae3ab053a283cfac8fe0a0b8eaae044768a4c4"
-
-[[package]]
-name = "x509-certificate"
-version = "0.25.0"
-dependencies = [
- "bcder",
- "bytes",
- "chrono",
- "der",
- "getrandom 0.2.17",
- "getrandom 0.4.2",
- "hex",
- "pem",
- "ring",
- "signature",
- "spki",
- "thiserror",
- "zeroize",
-]
 
 [[package]]
 name = "yoke"
