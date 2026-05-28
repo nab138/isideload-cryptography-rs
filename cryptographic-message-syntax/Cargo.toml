@@ -1,6 +1,6 @@
 [package]
 name = "isideload-cryptographic-message-syntax"
-version = "0.31.0"
+version = "0.31.1"
 authors = ["Nicholas Sharp <nab@nabdev.me>"]
 edition = "2024"
 rust-version = "1.85"
@@ -19,10 +19,9 @@ hex = "0.4.3"
 pem = "3.0.6"
 ring = "0.17.14"
 signature = { version = "2.2.0", features = ["std"] }
-x509-certificate = { package="isideload-x509-certificate", path = "../x509-certificate", version = "0.26.0" }
+x509-certificate = { package="isideload-x509-certificate", path = "../x509-certificate", version = "0.26.1" }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-# Forward `js`/`wasm_js` to transitive `getrandom` (uuid v4 needs it).
 getrandom_02 = { package = "getrandom", version = "0.2", default-features = false, features = [
   "js",
 ] }

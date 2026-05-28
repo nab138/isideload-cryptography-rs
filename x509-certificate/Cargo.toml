@@ -1,6 +1,6 @@
 [package]
 name = "isideload-x509-certificate"
-version = "0.26.0"
+version = "0.26.1"
 authors = ["Nicholas Sharp <nab@nabdev.me>"]
 edition = "2024"
 rust-version = "1.85"

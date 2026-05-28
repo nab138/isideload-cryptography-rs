@@ -56,7 +56,7 @@ pub trait Sign {
 }
 
 /// A superset of [Signer] and [Sign].
-pub trait KeyInfoSigner: Signer<Signature> + Sign {}
+pub trait KeyInfoSigner: Signer<Signature> + Sign + Send + Sync {}
 
 #[derive(Clone, Debug)]
 pub struct Signature(Vec<u8>);

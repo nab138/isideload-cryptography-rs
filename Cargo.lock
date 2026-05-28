@@ -253,7 +253,7 @@ dependencies = [
 
 [[package]]
 name = "isideload-cryptographic-message-syntax"
-version = "0.31.0"
+version = "0.31.1"
 dependencies = [
  "bcder",
  "bytes",
@@ -269,7 +269,7 @@ dependencies = [
 
 [[package]]
 name = "isideload-x509-certificate"
-version = "0.26.0"
+version = "0.26.1"
 dependencies = [
  "bcder",
  "bytes",
